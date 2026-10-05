@@ -1,0 +1,58 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  REGION: us-central1
+  SERVICE: shophub
+  IMAGE: us-central1-docker.pkg.dev/project-45cfe394-2aee-40ec-a9a/shophub/shophub
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -v
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/302943729152/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          service_account: github-deployer@project-45cfe394-2aee-40ec-a9a.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push image
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          docker build -t $IMAGE:${{ github.sha }} .
+          docker push $IMAGE:${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        run: gcloud run services update $SERVICE --image $IMAGE:${{ github.sha }} --region $REGION
+
+      - name: Smoke test
+        run: |
+          URL=$(gcloud run services describe $SERVICE --region $REGION --format 'value(status.url)')
+          curl --fail --retry 5 --retry-delay 5 $URL/health
