@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
@@ -48,11 +48,7 @@ def create_app(config=None):
 
     @app.route("/")
     def home():
-        return """
-        <h1>Welcome to ShopHub</h1>
-        <p>Cloud-Native E-Commerce Platform</p>
-        <p><a href="/api/products">Browse products (API)</a></p>
-        """
+        return render_template("index.html")
 
     @app.route("/health")
     def health():

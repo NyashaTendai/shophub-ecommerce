@@ -32,3 +32,8 @@ def test_list_products(client):
 
 def test_missing_product_returns_404(client):
     assert client.get("/api/products/999").status_code == 404
+
+def test_home_page(client):
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b'ShopHub' in response.data
