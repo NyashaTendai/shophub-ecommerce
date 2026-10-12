@@ -1,0 +1,28 @@
+name: Security checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # every Monday, 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  python-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install scanners in a virtual environment
+        run: |
+          python3 -m venv /tmp/scan-venv
+          /tmp/scan-venv/bin/pip install pip-audit bandit
+
+      - name: Check dependencies for known vulnerabilities
+        run: /tmp/scan-venv/bin/pip-audit -r requirements.txt
+
+      - name: Scan our own code for risky patterns
+        run: /tmp/scan-venv/bin/bandit -r . -x ./tests,./.venv,./venv -ll
