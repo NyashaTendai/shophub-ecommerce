@@ -130,6 +130,10 @@ pytest
 
 Without `DATABASE\_URL` the app uses a local SQLite file. Set `DATABASE\_URL` to a PostgreSQL connection string to use Postgres.
 
+## Performance
+
+First request after idle: 8.9 s with scale-to-zero, 0.85 s with one minimum instance (about $10 a month). Measured with curl from Harare against the live service.
+
 
 
 \## Infrastructure
