@@ -30,11 +30,20 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Only one production deploy (and migration) at a time.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
 
       - uses: google-github-actions/auth@v2
         with:
@@ -48,6 +57,18 @@ jobs:
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
           docker build -t $IMAGE:${{ github.sha }} .
           docker push $IMAGE:${{ github.sha }}
+
+      - name: Install app dependencies for migrations
+        run: pip install -r requirements.txt
+
+      # Runs before the deploy, so the new code never starts against an old schema.
+      # Migrations must be backward compatible with the revision that is still serving.
+      - name: Run database migrations
+        run: |
+          DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url)"
+          echo "::add-mask::$DATABASE_URL"
+          export DATABASE_URL
+          flask --app app db upgrade
 
       - name: Deploy to Cloud Run
         run: gcloud run services update $SERVICE --image $IMAGE:${{ github.sha }} --region $REGION
