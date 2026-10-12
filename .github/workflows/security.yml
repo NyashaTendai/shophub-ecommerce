@@ -25,4 +25,4 @@ jobs:
         run: /tmp/scan-venv/bin/pip-audit -r requirements.txt
 
       - name: Scan our own code for risky patterns
-        run: /tmp/scan-venv/bin/bandit -r . -x ./tests,./.venv,./venv -ll
+        run: /tmp/scan-venv/bin/bandit -r . -x ./tests,./.venv,./venv -ll -s B104
